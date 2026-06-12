@@ -514,6 +514,17 @@ function roundRect(ctx, x, y, w, h, r) {
 let board = [];    // board[pos] = pieceIndex
 let steps = 0;
 let selected = -1;
+let winAudio = null;  // 预加载的胜利音效
+let audioReady = false;
+
+// 首次交互时预加载音效（解决手机浏览器限制）
+function preloadAudio() {
+  if (audioReady) return;
+  winAudio = new Audio('win-sound.mp3');
+  winAudio.volume = 0.6;
+  winAudio.load();
+  audioReady = true;
+}
 
 function initBoard() {
   board = [];
@@ -557,6 +568,7 @@ function renderBoard() {
 }
 
 function onCellClick(pos) {
+  preloadAudio(); // 首次点击时预加载音效
   if (selected === -1) {
     selected = pos;
     renderBoard();
@@ -580,9 +592,10 @@ function checkWin() {
   }
   // 胜利！
   // 播放胜利音效
-  const winAudio = new Audio('win-sound.mp3');
-  winAudio.volume = 0.6;
-  winAudio.play().catch(() => {});
+  if (winAudio) {
+    winAudio.currentTime = 0;
+    winAudio.play().catch(() => {});
+  }
 
   // 第1步：闪黑
   const flash = document.getElementById('flashBlack');
