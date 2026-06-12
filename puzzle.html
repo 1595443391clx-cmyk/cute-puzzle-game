@@ -1,0 +1,628 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>🧩 可爱拼图游戏</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    min-height: 100vh;
+    background: linear-gradient(135deg, #fce4ec, #e8eaf6, #e0f7fa);
+    background-size: 400% 400%;
+    animation: bgMove 10s ease infinite;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    font-family: 'Segoe UI', 'Microsoft YaHei', sans-serif;
+    overflow: hidden;
+    position: relative;
+  }
+
+  @keyframes bgMove {
+    0%,100% { background-position: 0% 50%; }
+    50% { background-position: 100% 50%; }
+  }
+
+  /* 背景装饰 */
+  .deco {
+    position: fixed;
+    font-size: 30px;
+    opacity: 0.3;
+    animation: float 4s ease-in-out infinite;
+    pointer-events: none;
+    z-index: 0;
+  }
+  @keyframes float {
+    0%,100% { transform: translateY(0) rotate(0deg); }
+    50% { transform: translateY(-20px) rotate(10deg); }
+  }
+
+  h1 {
+    font-size: 2em;
+    color: #e91e63;
+    text-shadow: 2px 2px 0 #fff;
+    margin-bottom: 10px;
+    z-index: 1;
+    animation: bounce 2s ease infinite;
+  }
+  @keyframes bounce {
+    0%,100% { transform: translateY(0); }
+    50% { transform: translateY(-8px); }
+  }
+
+  .subtitle {
+    color: #9c27b0;
+    font-size: 0.95em;
+    margin-bottom: 20px;
+    z-index: 1;
+  }
+
+  .game-area {
+    display: flex;
+    gap: 30px;
+    align-items: flex-start;
+    z-index: 1;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+
+  .board {
+    display: grid;
+    grid-template-columns: repeat(3, 110px);
+    grid-template-rows: repeat(3, 110px);
+    gap: 4px;
+    background: rgba(255,255,255,0.6);
+    border-radius: 20px;
+    padding: 12px;
+    box-shadow: 0 8px 32px rgba(233,30,99,0.15);
+    backdrop-filter: blur(6px);
+  }
+
+  .cell {
+    width: 110px;
+    height: 110px;
+    border-radius: 14px;
+    cursor: grab;
+    transition: transform 0.15s, box-shadow 0.15s;
+    position: relative;
+    overflow: hidden;
+    box-shadow: 0 3px 10px rgba(0,0,0,0.1);
+  }
+  .cell:active { cursor: grabbing; }
+  .cell:hover {
+    transform: scale(1.06);
+    box-shadow: 0 6px 20px rgba(233,30,99,0.3);
+  }
+  .cell.selected {
+    outline: 4px solid #ff4081;
+    transform: scale(1.08);
+    box-shadow: 0 8px 25px rgba(255,64,129,0.4);
+  }
+
+  .preview-box {
+    text-align: center;
+    z-index: 1;
+  }
+  .preview-box p {
+    color: #9c27b0;
+    font-size: 0.9em;
+    margin-bottom: 8px;
+  }
+  .preview {
+    width: 200px;
+    height: 200px;
+    border-radius: 20px;
+    box-shadow: 0 6px 24px rgba(156,39,176,0.15);
+    overflow: hidden;
+  }
+
+  .info-bar {
+    display: flex;
+    gap: 30px;
+    margin-top: 20px;
+    z-index: 1;
+    align-items: center;
+  }
+  .steps {
+    background: rgba(255,255,255,0.7);
+    padding: 10px 24px;
+    border-radius: 30px;
+    color: #e91e63;
+    font-weight: bold;
+    font-size: 1.1em;
+    box-shadow: 0 3px 12px rgba(233,30,99,0.1);
+  }
+  .btn {
+    background: linear-gradient(135deg, #ff80ab, #ea80fc);
+    color: #fff;
+    border: none;
+    padding: 10px 28px;
+    border-radius: 30px;
+    font-size: 1em;
+    cursor: pointer;
+    box-shadow: 0 4px 15px rgba(233,30,99,0.2);
+    transition: transform 0.2s;
+  }
+  .btn:hover { transform: scale(1.08); }
+
+  /* 胜利弹窗 */
+  .overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.4);
+    z-index: 100;
+    align-items: center;
+    justify-content: center;
+    backdrop-filter: blur(4px);
+  }
+  .overlay.show { display: flex; }
+  .win-card {
+    background: #fff;
+    border-radius: 28px;
+    padding: 36px 40px;
+    text-align: center;
+    box-shadow: 0 12px 48px rgba(233,30,99,0.25);
+    animation: popIn 0.4s ease;
+    max-width: 90vw;
+  }
+  @keyframes popIn {
+    0% { transform: scale(0.5); opacity: 0; }
+    100% { transform: scale(1); opacity: 1; }
+  }
+  .win-card h2 {
+    font-size: 1.8em;
+    color: #e91e63;
+    margin-bottom: 8px;
+  }
+  .win-card p {
+    color: #7b1fa2;
+    margin-bottom: 16px;
+  }
+  .win-card img {
+    max-width: 280px;
+    max-height: 280px;
+    border-radius: 18px;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+    margin-bottom: 16px;
+  }
+  .win-card .btn { margin-top: 6px; }
+
+  /* 闪黑层 */
+  .flash-black {
+    position: fixed;
+    inset: 0;
+    background: #000;
+    z-index: 200;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.2s;
+  }
+  .flash-black.active { opacity: 1; }
+
+  /* 大图展示层 */
+  .big-photo-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.85);
+    z-index: 150;
+    align-items: center;
+    justify-content: center;
+    backdrop-filter: blur(6px);
+  }
+  .big-photo-overlay.show { display: flex; }
+  .big-photo-overlay img {
+    max-width: 85vw;
+    max-height: 85vh;
+    border-radius: 20px;
+    box-shadow: 0 0 60px rgba(255,64,129,0.4);
+    animation: zoomIn 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  }
+  @keyframes zoomIn {
+    0% { transform: scale(0.1); opacity: 0; }
+    100% { transform: scale(1); opacity: 1; }
+  }
+
+  /* 烟花粒子 */
+  .particle {
+    position: fixed;
+    pointer-events: none;
+    z-index: 99;
+    border-radius: 50%;
+    animation: particleFly 1.2s ease-out forwards;
+  }
+  @keyframes particleFly {
+    0% { opacity: 1; transform: translate(0,0) scale(1); }
+    100% { opacity: 0; transform: translate(var(--tx), var(--ty)) scale(0); }
+  }
+
+  @media (max-width: 600px) {
+    .board {
+      grid-template-columns: repeat(3, 85px);
+      grid-template-rows: repeat(3, 85px);
+    }
+    .cell { width: 85px; height: 85px; }
+    .preview { width: 150px; height: 150px; }
+    .game-area { gap: 16px; }
+  }
+</style>
+</head>
+<body>
+
+<!-- 背景装饰 -->
+<script>
+  const decos = ['⭐','🌸','☁️','💖','🎀','✨','🌙','🦋'];
+  for (let i = 0; i < 15; i++) {
+    const d = document.createElement('div');
+    d.className = 'deco';
+    d.textContent = decos[i % decos.length];
+    d.style.left = Math.random() * 95 + '%';
+    d.style.top = Math.random() * 95 + '%';
+    d.style.animationDelay = (Math.random() * 3) + 's';
+    d.style.fontSize = (20 + Math.random() * 25) + 'px';
+    document.body.appendChild(d);
+  }
+</script>
+
+<h1>🧩 可爱拼图游戏</h1>
+<p class="subtitle">点击两块拼图交换位置，拼回原图就赢啦！</p>
+
+<div class="game-area">
+  <div class="board" id="board"></div>
+  <div class="preview-box">
+    <p>🖼️ 原图参考</p>
+    <canvas class="preview" id="preview" width="200" height="200"></canvas>
+  </div>
+</div>
+
+<div class="info-bar">
+  <div class="steps">🎯 步数：<span id="steps">0</span></div>
+  <button class="btn" onclick="shuffleBoard()">🔄 重新打乱</button>
+</div>
+
+<!-- 闪黑层 -->
+<div class="flash-black" id="flashBlack"></div>
+
+<!-- 大图展示 -->
+<div class="big-photo-overlay" id="bigPhotoOverlay">
+  <img id="bigPhoto" src="win-photo.jpg" alt="庆祝图片">
+</div>
+
+<!-- 胜利弹窗 -->
+<div class="overlay" id="overlay">
+  <div class="win-card">
+    <h2>🎉 恭喜你！拼好啦！</h2>
+    <p id="winMsg"></p>
+    <!-- 👇 胜利图片 👇 -->
+    <img id="winImg" src="win-photo.jpg" alt="庆祝图片">
+    <br>
+    <button class="btn" onclick="shuffleBoard(); document.getElementById('overlay').classList.remove('show');">🔄 再来一局</button>
+  </div>
+</div>
+
+<script>
+// ============================================================
+// 用 Canvas 绘制卡通小猫作为拼图图案
+// ============================================================
+const SIZE = 3;          // 3x3
+const CELL = 110;
+const CANVAS_SIZE = SIZE * CELL;  // 330
+
+function drawCat(ctx, w, h) {
+  // 背景
+  const bg = ctx.createLinearGradient(0, 0, w, h);
+  bg.addColorStop(0, '#fce4ec');
+  bg.addColorStop(1, '#f3e5f5');
+  ctx.fillStyle = bg;
+  ctx.fillRect(0, 0, w, h);
+
+  // 身体
+  ctx.fillStyle = '#ffcc80';
+  ctx.beginPath();
+  ctx.ellipse(w/2, h*0.62, w*0.28, h*0.25, 0, 0, Math.PI*2);
+  ctx.fill();
+  ctx.strokeStyle = '#e6a352';
+  ctx.lineWidth = 2;
+  ctx.stroke();
+
+  // 头
+  ctx.fillStyle = '#ffcc80';
+  ctx.beginPath();
+  ctx.arc(w/2, h*0.38, w*0.25, 0, Math.PI*2);
+  ctx.fill();
+  ctx.stroke();
+
+  // 左耳
+  ctx.fillStyle = '#ffcc80';
+  ctx.beginPath();
+  ctx.moveTo(w*0.3, h*0.2);
+  ctx.lineTo(w*0.2, h*0.08);
+  ctx.lineTo(w*0.42, h*0.16);
+  ctx.closePath();
+  ctx.fill(); ctx.stroke();
+  // 左耳内
+  ctx.fillStyle = '#ffab91';
+  ctx.beginPath();
+  ctx.moveTo(w*0.32, h*0.19);
+  ctx.lineTo(w*0.25, h*0.11);
+  ctx.lineTo(w*0.4, h*0.17);
+  ctx.closePath();
+  ctx.fill();
+
+  // 右耳
+  ctx.fillStyle = '#ffcc80';
+  ctx.beginPath();
+  ctx.moveTo(w*0.7, h*0.2);
+  ctx.lineTo(w*0.8, h*0.08);
+  ctx.lineTo(w*0.58, h*0.16);
+  ctx.closePath();
+  ctx.fill(); ctx.stroke();
+  // 右耳内
+  ctx.fillStyle = '#ffab91';
+  ctx.beginPath();
+  ctx.moveTo(w*0.68, h*0.19);
+  ctx.lineTo(w*0.75, h*0.11);
+  ctx.lineTo(w*0.6, h*0.17);
+  ctx.closePath();
+  ctx.fill();
+
+  // 眼睛
+  ctx.fillStyle = '#333';
+  ctx.beginPath();
+  ctx.ellipse(w*0.4, h*0.36, 6, 8, 0, 0, Math.PI*2);
+  ctx.fill();
+  ctx.beginPath();
+  ctx.ellipse(w*0.6, h*0.36, 6, 8, 0, 0, Math.PI*2);
+  ctx.fill();
+  // 眼白高光
+  ctx.fillStyle = '#fff';
+  ctx.beginPath();
+  ctx.arc(w*0.41, h*0.345, 3, 0, Math.PI*2);
+  ctx.fill();
+  ctx.beginPath();
+  ctx.arc(w*0.61, h*0.345, 3, 0, Math.PI*2);
+  ctx.fill();
+
+  // 鼻子
+  ctx.fillStyle = '#f48fb1';
+  ctx.beginPath();
+  ctx.arc(w/2, h*0.42, 5, 0, Math.PI*2);
+  ctx.fill();
+
+  // 嘴巴
+  ctx.strokeStyle = '#e57373';
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.arc(w*0.47, h*0.44, 7, -0.2, Math.PI*0.8);
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.arc(w*0.53, h*0.44, 7, Math.PI*0.2, Math.PI*1.2);
+  ctx.stroke();
+
+  // 胡须
+  ctx.strokeStyle = '#8d6e63';
+  ctx.lineWidth = 1.5;
+  [[-1,0],[1,0]].forEach(side => {
+    for (let i = -1; i <= 1; i++) {
+      ctx.beginPath();
+      ctx.moveTo(w/2 + side[0]*w*0.12, h*0.42 + i*6);
+      ctx.lineTo(w/2 + side[0]*w*0.32, h*0.41 + i*10);
+      ctx.stroke();
+    }
+  });
+
+  // 腮红
+  ctx.fillStyle = 'rgba(255,138,128,0.35)';
+  ctx.beginPath();
+  ctx.ellipse(w*0.32, h*0.44, 10, 7, 0, 0, Math.PI*2);
+  ctx.fill();
+  ctx.beginPath();
+  ctx.ellipse(w*0.68, h*0.44, 10, 7, 0, 0, Math.PI*2);
+  ctx.fill();
+
+  // 脚
+  ctx.fillStyle = '#ffcc80';
+  ctx.beginPath();
+  ctx.ellipse(w*0.38, h*0.84, 14, 10, 0, 0, Math.PI*2);
+  ctx.fill(); ctx.stroke();
+  ctx.beginPath();
+  ctx.ellipse(w*0.62, h*0.84, 14, 10, 0, 0, Math.PI*2);
+  ctx.fill(); ctx.stroke();
+
+  // 尾巴
+  ctx.strokeStyle = '#e6a352';
+  ctx.lineWidth = 8;
+  ctx.lineCap = 'round';
+  ctx.beginPath();
+  ctx.moveTo(w*0.72, h*0.72);
+  ctx.quadraticCurveTo(w*0.92, h*0.55, w*0.85, h*0.42);
+  ctx.stroke();
+
+  // 蝴蝶结
+  ctx.fillStyle = '#f48fb1';
+  ctx.beginPath();
+  ctx.moveTo(w*0.5, h*0.55);
+  ctx.lineTo(w*0.42, h*0.50);
+  ctx.lineTo(w*0.46, h*0.57);
+  ctx.closePath();
+  ctx.fill();
+  ctx.beginPath();
+  ctx.moveTo(w*0.5, h*0.55);
+  ctx.lineTo(w*0.58, h*0.50);
+  ctx.lineTo(w*0.54, h*0.57);
+  ctx.closePath();
+  ctx.fill();
+  ctx.fillStyle = '#e91e63';
+  ctx.beginPath();
+  ctx.arc(w*0.5, h*0.55, 3.5, 0, Math.PI*2);
+  ctx.fill();
+
+  // 文字
+  ctx.font = 'bold 16px "Microsoft YaHei", sans-serif';
+  ctx.fillStyle = '#e91e63';
+  ctx.textAlign = 'center';
+  ctx.fillText('🐱 小猫咪', w/2, h*0.96);
+}
+
+// ============================================================
+// 拼图逻辑
+// ============================================================
+const fullCanvas = document.createElement('canvas');
+fullCanvas.width = CANVAS_SIZE;
+fullCanvas.height = CANVAS_SIZE;
+const fullCtx = fullCanvas.getContext('2d');
+drawCat(fullCtx, CANVAS_SIZE, CANVAS_SIZE);
+
+// 预览图
+const previewCanvas = document.getElementById('preview');
+const previewCtx = previewCanvas.getContext('2d');
+previewCtx.drawImage(fullCanvas, 0, 0, 200, 200);
+
+// 生成拼图块图片
+const pieceImages = [];
+for (let r = 0; r < SIZE; r++) {
+  for (let c = 0; c < SIZE; c++) {
+    const pc = document.createElement('canvas');
+    pc.width = CELL; pc.height = CELL;
+    const pctx = pc.getContext('2d');
+    // 圆角裁切
+    roundRect(pctx, 0, 0, CELL, CELL, 14);
+    pctx.clip();
+    pctx.drawImage(fullCanvas, c*CELL, r*CELL, CELL, CELL, 0, 0, CELL, CELL);
+    pieceImages.push(pc.toDataURL());
+  }
+}
+
+function roundRect(ctx, x, y, w, h, r) {
+  ctx.beginPath();
+  ctx.moveTo(x+r, y);
+  ctx.lineTo(x+w-r, y);
+  ctx.quadraticCurveTo(x+w, y, x+w, y+r);
+  ctx.lineTo(x+w, y+h-r);
+  ctx.quadraticCurveTo(x+w, y+h, x+w-r, y+h);
+  ctx.lineTo(x+r, y+h);
+  ctx.quadraticCurveTo(x, y+h, x, y+h-r);
+  ctx.lineTo(x, y+r);
+  ctx.quadraticCurveTo(x, y, x+r, y);
+  ctx.closePath();
+}
+
+let board = [];    // board[pos] = pieceIndex
+let steps = 0;
+let selected = -1;
+
+function initBoard() {
+  board = [];
+  for (let i = 0; i < SIZE*SIZE; i++) board.push(i);
+}
+
+function shuffleBoard() {
+  steps = 0;
+  selected = -1;
+  document.getElementById('steps').textContent = '0';
+  // Fisher-Yates 洗牌，确保有解（偶数次交换）
+  initBoard();
+  let inversions;
+  do {
+    for (let i = board.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [board[i], board[j]] = [board[j], board[i]];
+    }
+    inversions = 0;
+    for (let i = 0; i < board.length; i++)
+      for (let j = i+1; j < board.length; j++)
+        if (board[i] > board[j]) inversions++;
+  } while (inversions % 2 !== 0 || inversions === 0);
+  renderBoard();
+}
+
+function renderBoard() {
+  const el = document.getElementById('board');
+  el.innerHTML = '';
+  for (let i = 0; i < board.length; i++) {
+    const cell = document.createElement('div');
+    cell.className = 'cell' + (i === selected ? ' selected' : '');
+    cell.style.backgroundImage = 'url(' + pieceImages[board[i]] + ')';
+    cell.style.backgroundSize = 'cover';
+    cell.dataset.pos = i;
+    cell.addEventListener('click', () => onCellClick(i));
+    // 触屏拖拽支持
+    cell.addEventListener('touchstart', (e) => { e.preventDefault(); onCellClick(i); }, {passive:false});
+    el.appendChild(cell);
+  }
+}
+
+function onCellClick(pos) {
+  if (selected === -1) {
+    selected = pos;
+    renderBoard();
+  } else if (selected === pos) {
+    selected = -1;
+    renderBoard();
+  } else {
+    // 交换
+    [board[selected], board[pos]] = [board[pos], board[selected]];
+    steps++;
+    document.getElementById('steps').textContent = steps;
+    selected = -1;
+    renderBoard();
+    checkWin();
+  }
+}
+
+function checkWin() {
+  for (let i = 0; i < board.length; i++) {
+    if (board[i] !== i) return;
+  }
+  // 胜利！
+  // 播放胜利音效
+  const winAudio = new Audio('win-sound.mp3');
+  winAudio.volume = 0.6;
+  winAudio.play().catch(() => {});
+
+  // 第1步：闪黑
+  const flash = document.getElementById('flashBlack');
+  flash.classList.add('active');
+
+  setTimeout(() => {
+    // 第2步：取消闪黑，显示大图
+    flash.classList.remove('active');
+    document.getElementById('bigPhotoOverlay').classList.add('show');
+  }, 300);
+
+  // 点击大图后关闭，显示胜利弹窗
+  document.getElementById('bigPhotoOverlay').onclick = function() {
+    this.classList.remove('show');
+    document.getElementById('winMsg').textContent = `你用了 ${steps} 步拼好了！太厉害了～`;
+    document.getElementById('overlay').classList.add('show');
+    fireParticles();
+  };
+}
+
+function fireParticles() {
+  const colors = ['#ff4081','#7c4dff','#00e5ff','#ffea00','#76ff03','#ff6e40','#e040fb'];
+  for (let i = 0; i < 40; i++) {
+    const p = document.createElement('div');
+    p.className = 'particle';
+    const size = 6 + Math.random() * 10;
+    p.style.width = size + 'px';
+    p.style.height = size + 'px';
+    p.style.background = colors[Math.floor(Math.random()*colors.length)];
+    p.style.left = (40 + Math.random()*20) + '%';
+    p.style.top = (30 + Math.random()*20) + '%';
+    p.style.setProperty('--tx', (Math.random()-0.5)*300 + 'px');
+    p.style.setProperty('--ty', (Math.random()-0.5)*300 + 'px');
+    document.body.appendChild(p);
+    setTimeout(() => p.remove(), 1500);
+  }
+}
+
+// 初始化
+shuffleBoard();
+</script>
+</body>
+</html>
