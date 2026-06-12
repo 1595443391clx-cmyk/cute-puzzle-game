@@ -591,21 +591,32 @@ function checkWin() {
     if (board[i] !== i) return;
   }
   // 胜利！
-  // 播放胜利音效
-  if (winAudio) {
-    winAudio.currentTime = 0;
-    winAudio.play().catch(() => {});
+  // 播放胜利音效（确保完整播放）
+  let audioToPlay = winAudio;
+  if (!audioToPlay) {
+    audioToPlay = new Audio('win-sound.mp3');
+    audioToPlay.volume = 0.6;
+  }
+  audioToPlay.currentTime = 0;
+  
+  // 创建一个Promise来确保音效播放
+  const playPromise = audioToPlay.play();
+  if (playPromise !== undefined) {
+    playPromise.catch(() => {});
   }
 
-  // 第1步：闪黑
-  const flash = document.getElementById('flashBlack');
-  flash.classList.add('active');
-
+  // 延迟显示特效，让音效先播放
   setTimeout(() => {
-    // 第2步：取消闪黑，显示大图
-    flash.classList.remove('active');
-    document.getElementById('bigPhotoOverlay').classList.add('show');
-  }, 300);
+    // 第1步：闪黑
+    const flash = document.getElementById('flashBlack');
+    flash.classList.add('active');
+
+    setTimeout(() => {
+      // 第2步：取消闪黑，显示大图
+      flash.classList.remove('active');
+      document.getElementById('bigPhotoOverlay').classList.add('show');
+    }, 300);
+  }, 800); // 延迟800ms让音效多播放一会儿
 
   // 点击大图后关闭，显示胜利弹窗
   document.getElementById('bigPhotoOverlay').onclick = function() {
